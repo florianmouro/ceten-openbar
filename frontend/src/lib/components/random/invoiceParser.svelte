@@ -9,7 +9,7 @@
 	}
 
     export function restockAuchanDrive(input: string): Array<{ reference: number; name: string; quantity: number; unitPriceHT: number; tvaRate: number }> {
-		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total (HT) € Taux TVA % Cagnotte WAAOH! Prix total (TTC) €  "
+		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total Net (HT) € Taux TVA % Cagnotte WAAOH! Prix total Net (TTC) €  "
 		const splitLine = "   ";
 		const endPage1 = "Votre commande :";
 		const endPage2 = "Taux TVA";	
@@ -62,9 +62,9 @@
 	}
 
 	export function restockAuchan(input: string): Array<{ reference: number; name: string; quantity: number; unitPriceHT: number; tvaRate: number }> {
-		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total (HT) € Taux TVA % Prix total (TTC) €  ";
+		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total Net (HT) € Taux TVA % Prix total Net (TTC) €  ";
 		const splitLine = "   ";
-		const splitNameQuantity = "  Dont éco-participation :  ";
+		const splitNameQuantity = "  Eco-participation :";
 		const endPage1 = "Votre commande :";
 		const endPage2 = "TVA déjà collectée  Mode de paiement";
 		const endPage3 = "Taux TVA (%)";
@@ -72,18 +72,21 @@
 		const itemsList: Array<{ reference: number; name: string; quantity: number; unitPriceHT: number; tvaRate: number }> = [];
 		for (let i=1;i<pages.length;i++){
 			const pageSplit = pages[i].split(splitLine);
+			console.log(pageSplit);
 			for (let j = 0; j < pageSplit.length;) {
 				if (pageSplit[j].includes(endPage1) || pageSplit[j].includes(endPage2) || pageSplit[j].includes(endPage3)) {
 					break;
 				}
+				console.log("j", pageSplit[j]);
 				let reference;
 				if (pageSplit[j].includes("  ")){
 					reference = parseInt(pageSplit[j].split("  ").slice(-1)[0]);
 				}
 				else{
-					reference = parseInt(pageSplit[j].split(" ").slice(-1)[0]);
+					reference = parseInt(pageSplit[j]);
 				}
 				j++;
+				console.log("j+1", pageSplit[j]);
 				const splitEcoPart = pageSplit[j].split(splitNameQuantity);
 				const name = splitEcoPart[0];
 				let unitPriceHT;
