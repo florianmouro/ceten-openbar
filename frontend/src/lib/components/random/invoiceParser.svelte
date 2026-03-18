@@ -9,7 +9,7 @@
 	}
 
     export function restockAuchanDrive(input: string): Array<{ reference: number; name: string; quantity: number; unitPriceHT: number; tvaRate: number }> {
-		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total (HT) € Taux TVA % Cagnotte WAAOH! Prix total (TTC) €  "
+		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total Net (HT) € Taux TVA % Cagnotte WAAOH! Prix total Net (TTC) €  "
 		const splitLine = "   ";
 		const endPage1 = "Votre commande :";
 		const endPage2 = "Taux TVA";	
@@ -62,9 +62,9 @@
 	}
 
 	export function restockAuchan(input: string): Array<{ reference: number; name: string; quantity: number; unitPriceHT: number; tvaRate: number }> {
-		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total (HT) € Taux TVA % Prix total (TTC) €  ";
+		const splitPage = "Référence   Caractéristiques produit   Prix U. (HT) € Remises U. (HT) €   Qte.   Prix total Net (HT) € Taux TVA % Prix total Net (TTC) €  ";
 		const splitLine = "   ";
-		const splitNameQuantity = "  Dont éco-participation :  ";
+		const ecoPart = "Eco-participation :";
 		const endPage1 = "Votre commande :";
 		const endPage2 = "TVA déjà collectée  Mode de paiement";
 		const endPage3 = "Taux TVA (%)";
@@ -76,6 +76,10 @@
 				if (pageSplit[j].includes(endPage1) || pageSplit[j].includes(endPage2) || pageSplit[j].includes(endPage3)) {
 					break;
 				}
+				if (pageSplit[j].includes(ecoPart)){
+					j+= 3;
+					continue;
+				}
 				let reference;
 				if (pageSplit[j].includes("  ")){
 					reference = parseInt(pageSplit[j].split("  ").slice(-1)[0]);
@@ -84,25 +88,23 @@
 					reference = parseInt(pageSplit[j].split(" ").slice(-1)[0]);
 				}
 				j++;
-				const splitEcoPart = pageSplit[j].split(splitNameQuantity);
-				const name = splitEcoPart[0];
-				let unitPriceHT;
-				if (splitEcoPart.length > 1){
-					unitPriceHT = parseFloat(splitEcoPart[1].replace(",","."));
-				}
-				else{
-					j++;
-					unitPriceHT = parseFloat(pageSplit[j].replace(",","."));
-				}
+				const name = pageSplit[j];
 				j++;
-				if (isPrice(pageSplit[j])){ // Check if there is a discount
-					unitPriceHT -= parseFloat(pageSplit[j].replace(",","."));
+				let unitPriceHT = parseFloat(pageSplit[j].replace(',','.'));
+				j++;
+				//Check for discount
+				if (pageSplit[j].includes(',')){
+					unitPriceHT -= parseFloat(pageSplit[j].replace(',','.'));
 					j++;
 				}
 				const quantity = parseInt(pageSplit[j]);
-				j += 2;
+				j += 2 ;
 				const tvaRate = parseFloat(pageSplit[j].replace(',','.'));
 				j++;
+
+				if (pageSplit[j].includes(ecoPart)){
+					j += 3;
+				}
 				itemsList.push({
 					reference,
 					name,
