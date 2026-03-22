@@ -115,6 +115,11 @@ func (s *Server) Serve(c *config.Config) error {
 	onBoardStore := sessions.NewCookieStore([]byte(c.ApiConfig.AdminSessionSecret))
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// TODO Investigate further
+			// It appears that the clear only affects data set through gorillaContext.Set
+			// which we does not use.
+			// Indeed, that's the only call we make to gorilla/context and no dependencies seems to rely on it.
+			// Nonetheless, it means that that the original author wanted to clear something we don't clear.
 			defer gorillaContext.Clear(c.Request())
 			c.Set("userStore", userStore)
 			c.Set("adminStore", adminStore)
@@ -150,6 +155,9 @@ func (s *Server) Serve(c *config.Config) error {
 	// Start the HelloAsso processing runner
 	go func() {
 		ticker := time.NewTicker(c.HelloAssoConfig.CheckoutProcessingInterval)
+		// Useless
+		// If we exit this function, it means the ticker channels is closed (see loop below)
+		// So it does make any sense to call Stop afterwards
 		defer ticker.Stop()
 		
 		ctx := context.Background()

@@ -131,19 +131,8 @@ func (s *Server) ConnectAccount(c echo.Context, qrNonce string) error {
 		BroadcastToRoom(uid.(string), []byte("scanned"))
 	}
 
-	conf := config.GetConfig()
-
 	// Init OAuth2 flow with Google
-	oauth2Config := oauth2.Config{
-		ClientID:     conf.OauthConfig.GoogleClientID,
-		ClientSecret: conf.OauthConfig.GoogleClientSecret,
-		RedirectURL:  fmt.Sprintf("%s/auth/google/callback", conf.ApiConfig.BasePath),
-		Scopes:       scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-			TokenURL: "https://oauth2.googleapis.com/token",
-		},
-	}
+	oauth2Config := getOAuth2Config()
 
 	// state is not nonce
 	state := uuid.NewString()
@@ -215,8 +204,6 @@ func (s *Server) Callback(c echo.Context, params autogen.CallbackParams) error {
 func (s *Server) CallbackLinking(c echo.Context, params autogen.CallbackParams, state *StateCache) error {
 	accountID := state.Data
 
-	conf := config.GetConfig()
-
 	account, err := s.DBackend.GetAccount(c.Request().Context(), accountID.(string))
 	if err != nil {
 		if err != mongo.ErrNoDocuments {
@@ -233,16 +220,7 @@ func (s *Server) CallbackLinking(c echo.Context, params autogen.CallbackParams, 
 	}
 
 	// Get token from Google
-	oauth2Config := oauth2.Config{
-		ClientID:     conf.OauthConfig.GoogleClientID,
-		ClientSecret: conf.OauthConfig.GoogleClientSecret,
-		RedirectURL:  fmt.Sprintf("%s/auth/google/callback", conf.ApiConfig.BasePath),
-		Scopes:       scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-			TokenURL: "https://oauth2.googleapis.com/token",
-		},
-	}
+	oauth2Config := getOAuth2Config()
 
 	token, err := oauth2Config.Exchange(c.Request().Context(), params.Code)
 	if err != nil {
@@ -348,12 +326,9 @@ func (s *Server) CallbackLinking(c echo.Context, params autogen.CallbackParams, 
 	return c.Redirect(http.StatusPermanentRedirect, r.(string))
 }
 
-// (GET /auth/google/callback)
-func (s *Server) CallbackInpromptu(c echo.Context, params autogen.CallbackParams) error {
+func getOAuth2Config() oauth2.Config {
 	conf := config.GetConfig()
-
-	// Get token from Google
-	oauth2Config := oauth2.Config{
+	return oauth2.Config{
 		ClientID:     conf.OauthConfig.GoogleClientID,
 		ClientSecret: conf.OauthConfig.GoogleClientSecret,
 		RedirectURL:  fmt.Sprintf("%s/auth/google/callback", conf.ApiConfig.BasePath),
@@ -363,7 +338,12 @@ func (s *Server) CallbackInpromptu(c echo.Context, params autogen.CallbackParams
 			TokenURL: "https://oauth2.googleapis.com/token",
 		},
 	}
+}
 
+// (GET /auth/google/callback)
+func (s *Server) CallbackInpromptu(c echo.Context, params autogen.CallbackParams) error {
+	// Get token from Google
+	oauth2Config := getOAuth2Config()
 	token, err := oauth2Config.Exchange(c.Request().Context(), params.Code)
 	if err != nil {
 		logrus.Error(err)
@@ -441,36 +421,25 @@ func (s *Server) CallbackInpromptu(c echo.Context, params autogen.CallbackParams
 	return c.Redirect(http.StatusPermanentRedirect, r.(string))
 }
 
+func sanitizeRedirect(redirect string) string {
+	baseUrl := config.GetConfig().ApiConfig.FrontendBasePath
+	// TODO Maybe check if this is really needed
+	if redirect == "admin" || redirect == "client/commande" {
+		return baseUrl + "/" + redirect
+	}
+	return baseUrl
+}
+
 // (GET /auth/google)
 func (s *Server) ConnectGoogle(c echo.Context, p autogen.ConnectGoogleParams) error {
-	conf := config.GetConfig()
+	redirectUrl := sanitizeRedirect(p.R)
 
-	// Get ?r=
-	rel := p.R
-
-	// Check if it's a safe redirect (TODO: check if this is correct)
-	switch rel {
-	case "admin":
-		rel = conf.ApiConfig.FrontendBasePath + "/admin"
-	case "client/commande":
-		rel = conf.ApiConfig.FrontendBasePath + "/client/commande"
-	}
 	// Init OAuth2 flow with Google
-	oauth2Config := oauth2.Config{
-		ClientID:     conf.OauthConfig.GoogleClientID,
-		ClientSecret: conf.OauthConfig.GoogleClientSecret,
-		RedirectURL:  fmt.Sprintf("%s/auth/google/callback", conf.ApiConfig.BasePath),
-		Scopes:       scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-			TokenURL: "https://oauth2.googleapis.com/token",
-		},
-	}
-
+	oauth2Config := getOAuth2Config() 
 	// state is not nonce
 	state := uuid.NewString()
 
-	redirectCache.Set(state, rel, cache.DefaultExpiration)
+	redirectCache.Set(state, redirectUrl, cache.DefaultExpiration)
 
 	hostDomainOption := oauth2.SetAuthURLParam("hd", "telecomnancy.net")
 	// Redirect to Google
