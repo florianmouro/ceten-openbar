@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// (POST /auth/card)
+// (POST /auth/password)
 func (s *Server) ConnectPassword(c echo.Context) error {
 	// Check that header "X-Local-Token" is set to the local token
 	if c.Request().Header.Get("X-Local-Token") != config.GetConfig().ApiConfig.LocalToken {
